@@ -2,9 +2,9 @@ name: OTA translations
 
 on:
   workflow_dispatch:
-  schedule:
+  #schedule:
     # Every day at 10:11 UTC
-    - cron:  '11 10 * * *'
+    #- cron:  '11 10 * * *'
 
 jobs:
   build-ota-translations:

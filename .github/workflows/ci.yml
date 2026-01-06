@@ -1,6 +1,8 @@
 name: Build
 
-on: [push, pull_request]
+on:
+  #[push, pull_request]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -51,14 +53,29 @@ jobs:
     - name: Run bootstrap
       run: ./bootstrap
     - name: Run configure
-      run: ./configure
+      run: ./configure --prefix='${{ github.workspace }}/dist'
     - name: Run make distcheck
       run: make distcheck
+    - name: Run make
+      run: |
+        mkdir -p dist
+        make
+        make install
     - name: Upload source tarball artifact
       uses: actions/upload-artifact@v4
       with:
         name: source-tarball
         path: poedit-*.tar.gz
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: dist
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-full
+        path: '*'
 
   build-macos:
     name: Build on macOS
@@ -79,13 +96,22 @@ jobs:
       run: brew bundle --file=macos/Brewfile
     - uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '^26.0.0'
-    - uses: sersoft-gmbh/xcodebuild-action@v3
+        # see a7fdeb1b and https://mastodon.social/@siracusa/115491845898322390
+        xcode-version: '~26.0.0'
+    - name: Build
+      run: |
+        xcodebuild -workspace Poedit.xcworkspace -scheme Poedit -destination "platform=macOS,arch=arm64,name=My Mac" -parallelizeTargets -configuration Debug -archivePath Poedit.xcarchive archive
+        xcodebuild -exportArchive -archivePath Poedit.xcarchive -exportPath Poedit.app -exportOptionsPlist macos/export-options.plist
+    - name: Upload bundle
+      uses: actions/upload-artifact@v4
       with:
-        workspace: Poedit.xcworkspace
-        scheme: Poedit
-        parallelize-targets: true
-        action: build
+        name: macos-build
+        path: Poedit.app
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-full
+        path: '*'
 
   build-windows:
     name: Build on Windows
@@ -104,8 +130,24 @@ jobs:
     - uses: nuget/setup-nuget@v2
     - name: Restore NuGet packages
       run: nuget restore Poedit.sln
+    - name: Set up environment variables
+      run: |
+        & .\win32\env.bat
+    - name: List redist dir
+      run: |
+        Get-ChildItem -Path "${env:VCToolsRedistDir}" -Recurse
     - name: Build solution
-      run: msbuild Poedit.sln /p:configuration=Debug
+      run: cd win32 && msbuild distrib.proj /p:configuration=Release
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: win32
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-full
+        path: '*'
 
   publish-release:
     name: Publish release tarball
