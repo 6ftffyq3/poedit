@@ -1,6 +1,14 @@
 name: Build
 
-on: [push, pull_request]
+on:
+  #[push, pull_request]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag for building
+        required: false
+        default: master
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,6 +22,8 @@ jobs:
       MAKEFLAGS: -j2
     steps:
     - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.tag }}
     - name: Checkout submodules
       # submodules are not used by the build, but needed for `make dist`:
       run: git submodule update --init deps/json deps/pugixml
@@ -51,14 +61,29 @@ jobs:
     - name: Run bootstrap
       run: ./bootstrap
     - name: Run configure
-      run: ./configure
+      run: ./configure --prefix='${{ github.workspace }}/dist'
     - name: Run make distcheck
       run: make distcheck
+    - name: Run make
+      run: |
+        mkdir -p dist
+        make
+        make install
     - name: Upload source tarball artifact
       uses: actions/upload-artifact@v4
       with:
         name: source-tarball
         path: poedit-*.tar.gz
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: dist
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-full
+        path: '*'
 
   build-macos:
     name: Build on macOS
@@ -68,6 +93,7 @@ jobs:
       run: git config --global submodule.fetchJobs 10
     - uses: actions/checkout@v4
       with:
+        ref: ${{ inputs.tag }}
         submodules: recursive
     - name: Deepen git history
       run: git fetch --deepen=100000 --filter=blob:none origin ${{ github.ref }}
@@ -81,12 +107,20 @@ jobs:
       with:
         # see a7fdeb1b and https://mastodon.social/@siracusa/115491845898322390
         xcode-version: '~26.0.0'
-    - uses: sersoft-gmbh/xcodebuild-action@v3
+    - name: Build
+      run: |
+        xcodebuild -workspace Poedit.xcworkspace -scheme Poedit -destination "platform=macOS,name=My Mac" -parallelizeTargets -archivePath Poedit.xcarchive ARCHS="arm64 x86_64" archive
+        xcodebuild -exportArchive -archivePath Poedit.xcarchive -exportPath . -exportOptionsPlist macos/export-options.plist
+    - name: Upload bundle
+      uses: actions/upload-artifact@v4
       with:
-        workspace: Poedit.xcworkspace
-        scheme: Poedit
-        parallelize-targets: true
-        action: build
+        name: macos-build
+        path: Poedit.app
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-full
+        path: '*'
 
   build-windows:
     name: Build on Windows
@@ -96,6 +130,7 @@ jobs:
       run: git config --global submodule.fetchJobs 10
     - uses: actions/checkout@v4
       with:
+        ref: ${{ inputs.tag }}
         submodules: recursive
     - name: Deepen git history
       run: git fetch --deepen=100000 --filter=blob:none origin ${{ github.ref }}
@@ -106,7 +141,17 @@ jobs:
     - name: Restore NuGet packages
       run: nuget restore Poedit.sln
     - name: Build solution
-      run: msbuild Poedit.sln /p:configuration=Debug
+      run: cd win32 && msbuild distrib.proj /p:configuration=Release
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: win32
+    - name: Upload entire dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-full
+        path: '*'
 
   publish-release:
     name: Publish release tarball
