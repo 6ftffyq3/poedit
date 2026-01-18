@@ -1,0 +1,23 @@
+//
+// Prefix header for all source files of the 'Poedit' target in the 'Poedit' project
+//
+
+#ifdef _MSC_VER
+    // for C++REST SDK
+    #define _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS 1
+#endif
+
+#ifdef __cplusplus
+    #include <wx/wxprec.h>
+
+    #include "concurrency.h"
+    #include "configuration.h"
+    #include "errors.h"
+    #include "unicode_helpers.h"
+    #include "str_helpers.h"
+#endif
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+    #import <SystemConfiguration/SystemConfiguration.h>
+#endif

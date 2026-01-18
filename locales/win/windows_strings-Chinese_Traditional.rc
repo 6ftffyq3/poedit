@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+BEGIN
+    222, "PO 翻譯"
+    223, "已編譯之翻譯"
+    224, "翻譯模板"
+    225, "XLIFF 翻譯"
+    226, "JSON 文件"
+    227, "Flutter 翻譯"
+    228, "RESX 資源"
+    229, "Qt 翻譯"
+END

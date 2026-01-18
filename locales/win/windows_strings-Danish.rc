@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_DANISH, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO-oversættelse"
+    223, "Kompileret oversættelse"
+    224, "Oversættelsesskabelon"
+    225, "XLIFF-oversættelse"
+    226, "JSON-dokument"
+    227, "Flutter-oversætte"
+    228, "RESX-ressource"
+    229, "Qt-oversættelse"
+END

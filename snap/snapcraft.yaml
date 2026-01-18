@@ -1,0 +1,241 @@
+name: poedit
+version: "3.8.1"
+title: Poedit
+summary: Simple translation editor
+description: >
+  Translation editor for gettext (PO files) and XLIFF.
+  It helps with translating applications or WordPress themes and plugins into
+  other languages, as well as with developing localizable applications.
+
+  By default Poedit snap can only open files under your home directory, to
+  allow Poedit access files under /media you must connect this snap to the
+  `removable-media` interface by running the following command:
+
+    $ sudo snap connect poedit:removable-media
+
+  For Poedit to save credential data for Crowdin integration you must
+  connect this snap to the `password-manager-service` interface:
+
+    $ snap connect poedit:password-manager-service
+
+base: core24
+grade: stable
+confinement: strict
+compression: lzo
+icon: artwork/linux/appicon/scalable/apps/net.poedit.Poedit.svg
+
+platforms:
+  amd64:
+  arm64:
+
+layout:
+  /usr/share/aspell:
+    symlink: $SNAP/usr/share/aspell
+  /usr/share/hunspell:
+    symlink: $SNAP/usr/share/hunspell
+  /usr/share/myspell:
+    symlink: $SNAP/usr/share/myspell
+  /usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/enchant-2:
+    symlink: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/enchant-2
+
+apps:
+  poedit:
+    command: bin/poedit
+    desktop: share/applications/net.poedit.Poedit.desktop
+    extensions: [gnome]
+    common-id: net.poedit.Poedit
+    plugs:
+      - home
+      - network
+      - removable-media
+      - mount-observe
+      - password-manager-service
+
+  poedit-uri-handler:
+    command: bin/poedit
+    desktop: share/applications/net.poedit.PoeditURI.desktop
+    extensions: [gnome]
+    plugs:
+      - home
+      - network
+      - removable-media
+      - mount-observe
+      - password-manager-service
+
+parts:
+  gettext:
+    source: https://ftpmirror.gnu.org/gnu/gettext/gettext-0.26.tar.xz
+    source-checksum: sha256/d1fb86e260cfe7da6031f94d2e44c0da55903dbae0a2fa0fae78c91ae1b56f00
+    source-type: tar
+
+    build-packages:
+      - build-essential
+      - libncurses-dev
+      - libxml2-dev
+      - bison
+      - m4
+
+    plugin: autotools
+    autotools-configure-parameters:
+      - --prefix=/
+      - --disable-static
+      - --enable-shared
+      - --enable-relocatable
+      - --with-included-gettext
+
+    stage:
+      - bin/*
+      - lib/*
+      - libexec/*
+      - share/*
+      - include/*
+
+    prime:
+      - bin/*
+      - lib/*
+      - -lib/*.la
+      - libexec/gettext/cldr-plurals
+      - share/gettext*/its/*
+      - share/locale/*
+
+  poedit:
+    after:
+      - wxwidgets
+      - gettext
+
+    source: .
+
+    build-packages:
+      # wxWidgets library provided by Ubuntu 16.04 is too old, using
+      # installation from `wxwidgets` part instead
+      #- libwxgtk3.0-dev
+
+      # "JSON for Modern C++" is only provided by Ubuntu >= 17.10,
+      # using embedded submodule's version instead
+      #- nlohmann-json-dev
+
+      - automake
+      - libboost-all-dev
+      - libcld2-dev
+      - libcpprest-dev
+      - libgtkspell3-3-dev
+      - libicu-dev
+      - libjpeg-dev
+      - liblucene++-dev
+      - libsecret-1-dev
+      - libtiff5-dev
+      - pkg-config
+      - zlib1g-dev
+
+    plugin: autotools
+    override-build: |
+      set -eu
+
+      ./bootstrap
+      ./configure \
+        --with-wx-prefix="$CRAFT_STAGE" \
+        CPPFLAGS="-DSNAPCRAFT -I${CRAFT_STAGE}/include -I${CRAFT_PART_INSTALL}/../build/deps/json/src" \
+        LDFLAGS="-Wl,--copy-dt-needed-entries -L${CRAFT_STAGE}/lib" \
+        PKG_CONFIG_PATH="${CRAFT_STAGE}"/lib/pkgconfig \
+        PATH="${CRAFT_STAGE}/bin:$PATH"
+      make -j4
+      make prefix="${CRAFT_PART_INSTALL}" install-strip
+
+      # Fix-up application icon lookup
+      mkdir -p ${CRAFT_PART_INSTALL}/meta/gui/
+      cp artwork/linux/appicon/scalable/apps/net.poedit.Poedit.svg ${CRAFT_PART_INSTALL}/meta/gui/icon.svg
+      sed --in-place -e 's|^Icon=.*|Icon=\${SNAP}/meta/gui/icon.svg|' \
+        "${CRAFT_PART_INSTALL}"/share/applications/net.poedit*.desktop
+
+    stage-packages:
+      - libcld2-0
+      - libcpprest2.10
+      - libgtkspell3-3-0
+      - liblucene++0v5
+      - libsecret-1-0
+
+    stage:
+      - bin/*
+      - usr/*
+      - share/*
+
+    prime:
+      - bin/*
+      - usr/*
+      - share/*
+
+  wxwidgets:
+    after:
+      - gettext
+
+    source: deps/wx
+
+    build-packages:
+      - libexpat1-dev
+      - libjpeg-dev
+      - libpng-dev
+      - libsecret-1-dev
+      - libtiff5-dev
+      - libxtst-dev
+      - zlib1g-dev
+
+    plugin: autotools
+    override-build: |
+      set -eu
+
+      ./autogen.sh
+      ./configure \
+        --disable-shared \
+        --disable-sound \
+        --prefix="${CRAFT_STAGE}" \
+        --with-gtk=3 \
+        --without-opengl \
+        --without-sdl \
+        --disable-html \
+        --disable-richtext \
+        --enable-debug \
+        --enable-webview \
+        --with-cxx=14 \
+        --enable-stl \
+        PATH="${CRAFT_STAGE}/bin:$PATH"
+      make -j4
+      make prefix="${CRAFT_PART_INSTALL}" install
+
+    stage:
+      - share/aclocal/*
+      - bin/*
+      - usr/*
+      - include/*
+      - lib/*
+      - share/locale/*
+    override-stage: |
+      set -eu
+
+      craftctl default
+
+      # Fixup wrong wx-config link
+      ln \
+        --force \
+        --relative \
+        --symbolic \
+        "${CRAFT_STAGE}"/lib/wx/config/gtk3-unicode-static-3.2 \
+        "${CRAFT_STAGE}"/bin/wx-config
+    prime:
+      - usr/*
+      - share/locale/*
+
+  spellcheck-dictionaries:
+    plugin: nil
+    override-build: |
+      set -eu
+
+      # Download all dictionary packages, and extract to install prefix
+      apt download $(apt-cache showpkg hunspell-dictionary | awk '/Pa/, /Reverse P/ {next} {print $1 | "sort"}')
+      find -name '*.deb' | xargs --max-args=1 --replace={} --verbose dpkg-deb --extract {} ../install
+
+    stage:
+      - usr/share/hunspell/*
+      - usr/share/myspell/*
+    prime:
+      - usr/share/hunspell/*
+      - usr/share/myspell/*

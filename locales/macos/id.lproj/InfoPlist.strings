@@ -1,0 +1,50 @@
+/* File kind displayed in Finder */
+"PO Translation" = "Terjemahan PO";
+
+/* File kind displayed in Finder */
+"Compiled Translation" = "Terjemahan Dikompilasi";
+
+/* File kind displayed in Finder */
+"Translation Template" = "Template Terjemahan";
+
+/* File kind displayed in Finder */
+"XLIFF Translation" = "Terjemahan XLIFF";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Terjemahan Qt";
+
+/* File kind displayed in Finder */
+"Flutter Translation" = "Terjemahan Flutter";
+
+/* File kind displayed in Finder */
+"RESX Resource" = "Sumber Daya RESX";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Terjemahan Qt";
+
+/* File kind displayed in Finder */
+"JSON Document" = "Dokumen JSON";
+
+/* File kind displayed in Finder */
+"Xcode Localization Catalog" = "Katalog Pelokalan Xcode";
+
+/* Spotlight keywords. Translation needs to preservet syntax (commas without spaces). Can be left as-is or, if translating, only the last two items should be translated; the rest are either filetype or proper names or abbreviations used by developers (i18n, l10n). */
+MDItemKeywords = "PO,XLIFF,gettext,WordPress,i18n,l10n,terjemahan,pelokalan";
+
+/* Permissions description for macOS Catalina */
+NSDesktopFolderUsageDescription = "Poedit perlu mengakses berkas-berkas sumber Anda untuk memindai mereka mencari kalimat-kalimat yang dapat diterjemahkan.";
+
+/* Permissions description for macOS Catalina */
+NSDocumentsFolderUsageDescription = "Poedit perlu mengakses berkas-berkas sumber Anda untuk memindai mereka mencari kalimat-kalimat yang dapat diterjemahkan.";
+
+/* Permissions description for macOS Catalina */
+NSDownloadsFolderUsageDescription = "Poedit perlu mengakses berkas-berkas sumber Anda untuk memindai mereka mencari kalimat-kalimat yang dapat diterjemahkan.";
+
+/* Permissions description for macOS Catalina */
+NSFileProviderDomainUsageDescription = "Poedit perlu mengakses berkas-berkas sumber Anda untuk memindai mereka mencari kalimat-kalimat yang dapat diterjemahkan.";
+
+/* Permissions description for macOS Catalina */
+NSNetworkVolumesUsageDescription = "Poedit perlu mengakses berkas-berkas sumber Anda untuk memindai mereka mencari kalimat-kalimat yang dapat diterjemahkan.";
+
+/* Permissions description for macOS Catalina */
+NSRemovableVolumesUsageDescription = "Poedit perlu mengakses berkas-berkas sumber Anda untuk memindai mereka mencari kalimat-kalimat yang dapat diterjemahkan.";

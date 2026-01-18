@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_CZECH, SUBLANG_NEUTRAL
+BEGIN
+    222, "Překlady PO"
+    223, "Zkompilované překlady"
+    224, "Šablona překladů"
+    225, "Překlady XLIFF"
+    226, "Dokument JSON"
+    227, "Překlady pro Flutter"
+    228, "RESX zdroje"
+    229, "Překlady pro Qt"
+END

@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_GERMAN, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO-Übersetzung"
+    223, "Kompilierte Übersetzung"
+    224, "Übersetzungsvorlage"
+    225, "XLIFF-Übersetzung"
+    226, "JSON-Dokument"
+    227, "Flutter-Übersetzung"
+    228, "RESX-Ressource"
+    229, "Qt-Übersetzung"
+END

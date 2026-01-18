@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+         ToolsVersion="4.0">
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebugSuffix>d</DebugSuffix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebugSuffix></DebugSuffix>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <ResourcesOutDir>$(OutDir)Resources\</ResourcesOutDir>
+    <TranslationsOutDir>$(OutDir)Translations\</TranslationsOutDir>
+    <GettextOutDir>$(OutDir)GettextTools\</GettextOutDir>
+    <GettextNugetDir>$(GettextToolsDir)..\</GettextNugetDir>
+    <Msgfmt>$(GettextToolsDir)msgfmt.exe -c</Msgfmt>
+
+    <PoDirPoedit>locales</PoDirPoedit>
+    <PoDirWX>deps\wx\locale</PoDirWX>
+    <PoDirWXMSW>deps\wx\locale\msw</PoDirWXMSW>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <DataFiles Include="src\resources\*.xrc" />
+    <DataFiles Include="artwork\*.png" />
+    <DataFiles Include="artwork\windows\*.png" />
+    <DataFiles Include="artwork\windows\*.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TranslationFiles Include="$(PoDirPoedit)\*.po" />
+    <TranslationFilesWX Include="$(PoDirWX)\*.po" />
+    <TranslationFilesWXMSW Include="$(PoDirWXMSW)\*.po" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <GettextBinFiles Include="$(GettextToolsDir)\msgcat.exe" />
+    <GettextBinFiles Include="$(GettextToolsDir)\msgfmt.exe" />
+    <GettextBinFiles Include="$(GettextToolsDir)\msgunfmt.exe" />
+    <GettextBinFiles Include="$(GettextToolsDir)\msguniq.exe" />
+    <GettextBinFiles Include="$(GettextToolsDir)\msgmerge.exe" />
+    <GettextBinFiles Include="$(GettextToolsDir)\xgettext.exe" />
+    <GettextBinFiles Include="$(GettextToolsDir)\*.dll" />
+    <GettextDataFiles Include="$(GettextNugetDir)\share\**\*.*" />
+  </ItemGroup>
+
+
+  <PropertyGroup>
+    <GitBuildNumberFile>$(IntermediateOutputPath)\git_build_number.h</GitBuildNumberFile>
+    <GitBuildNumberOldDefine Condition="Exists('$(GitBuildNumberFile)')">$([System.IO.File]::ReadAllText($(GitBuildNumberFile)).Trim())</GitBuildNumberOldDefine>
+  </PropertyGroup>
+  <Target Name="GetGitVersion" BeforeTargets="ClCompile">
+    <GitCommits>
+      <Output TaskParameter="CommitsCount" PropertyName="GitBuildNumber" />
+    </GitCommits>
+    <CreateProperty Value="#define POEDIT_GIT_BUILD_NUMBER $(GitBuildNumber)">
+      <Output TaskParameter="Value" PropertyName="GitBuildNumberDefine"/>
+    </CreateProperty>
+    <Message Importance="High" Text="Updating git build number to $(GitBuildNumber)..."
+             Condition="$(GitBuildNumberDefine)!=$(GitBuildNumberOldDefine)" />
+    <WriteLinesToFile File="$(GitBuildNumberFile)" Lines="$(GitBuildNumberDefine)" Overwrite="true"
+                      Condition="$(GitBuildNumberDefine)!=$(GitBuildNumberOldDefine)" />
+    </Target>
+    
+
+  <Target Name="CopyDataFiles" BeforeTargets="ClCompile">
+    <Message Importance="High" Text="Copying resources to $(ResourcesOutDir)" />
+    <MakeDir Directories="$(ResourcesOutDir)" />
+    <Copy
+      SourceFiles="@(DataFiles)"
+      DestinationFolder="$(ResourcesOutDir)"
+      SkipUnchangedFiles="true"
+    />
+  </Target>
+
+
+  <Target Name="CopyTranslations_Poedit" BeforeTargets="ClCompile"
+          Inputs="@(TranslationFiles)"
+          Outputs="@(TranslationFiles->'$(TranslationsOutDir)%(Filename)\poedit.mo')">
+    <MakeDir Directories="@(TranslationFiles->'$(TranslationsOutDir)\%(Filename)')" />
+    <Exec Command='$(Msgfmt) -o "$(TranslationsOutDir)%(TranslationFiles.Filename)\poedit.mo" @(TranslationFiles)' />
+  </Target>
+
+  <Target Name="CopyTranslations_WX" BeforeTargets="ClCompile"
+        Inputs="@(TranslationFilesWX)"
+        Outputs="@(TranslationFilesWX->'$(TranslationsOutDir)%(Filename)\wxstd.mo')">
+    <MakeDir Directories="@(TranslationFilesWX->'$(TranslationsOutDir)\%(Filename)')" />
+    <Exec Command='$(Msgfmt) -o "$(TranslationsOutDir)%(TranslationFilesWX.Filename)\wxstd.mo" @(TranslationFilesWX)' />
+  </Target>
+
+
+  <Target Name="CleanDataFiles" AfterTargets="Clean">
+    <Message Importance="High" Text="Cleaning resources, translations etc." />
+    <RemoveDir Directories="$(ResourcesOutDir)" />
+    <RemoveDir Directories="$(TranslationsOutDir)" />
+    <RemoveDir Directories="$(GettextOutDir)" />
+  </Target>
+
+
+  <Target Name="CopyGettextTools" BeforeTargets="ClCompile"
+          Inputs="@(GettextBinFiles);@(GettextDataFiles)"
+          Outputs="@(GettextBinFiles->'$(GettextOutDir)\bin\%(Filename)%(Extension)');@(GettextDataFiles->'$(GettextOutDir)\share\%(RecursiveDir)%(Filename)%(Extension)')"
+          >
+    <Message Importance="High" Text="Copying gettext tools binaries to $(GettextOutDir)" />
+    <MakeDir Directories="$(GettextOutDir)\bin" />
+    <MakeDir Directories="$(GettextOutDir)\share" />
+    <Copy
+      SourceFiles="@(GettextBinFiles)"
+      DestinationFolder="$(GettextOutDir)\bin"
+      SkipUnchangedFiles="true"
+    />
+    <Copy
+      SourceFiles="@(GettextDataFiles)"
+      DestinationFolder="$(GettextOutDir)\share\%(RecursiveDir)"
+      SkipUnchangedFiles="true"
+    />
+  </Target>
+
+</Project>

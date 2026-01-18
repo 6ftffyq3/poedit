@@ -1,0 +1,11 @@
+
+  Introduction
+================
+
+This directory contains all 3rd party dependencies needed to build Poedit.
+It's typically not needed on Linux, where all the dependencies are commonly
+available, but it comes handy when compiling for Windows and OS X.
+
+Note that some sources are slightly patched, too.
+
+Building the dependencies is fully integrated into Poedit’s build system.

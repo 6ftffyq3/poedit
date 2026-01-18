@@ -1,0 +1,9 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_PUNJABI, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO ਅਨੁਵਾਦ"
+    223, "ਕੰਪਾਇਲ ਕੀਤੇ ਅਨੁਵਾਦ"
+    224, "ਅਨੁਵਾਦ ਟੈਮਪਲੇਟ"
+    225, "XLIFF ਅਨੁਵਾਦ"
+END

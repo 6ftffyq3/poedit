@@ -1,0 +1,50 @@
+/* File kind displayed in Finder */
+"PO Translation" = "PO-vertaling";
+
+/* File kind displayed in Finder */
+"Compiled Translation" = "Gecompileerde vertaling";
+
+/* File kind displayed in Finder */
+"Translation Template" = "Vertalingssjabloon";
+
+/* File kind displayed in Finder */
+"XLIFF Translation" = "XLIFF-vertaling";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Qt-vertaling";
+
+/* File kind displayed in Finder */
+"Flutter Translation" = "Flutter Vertaling";
+
+/* File kind displayed in Finder */
+"RESX Resource" = "RESX-bron";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Qt-vertaling";
+
+/* File kind displayed in Finder */
+"JSON Document" = "JSON document";
+
+/* File kind displayed in Finder */
+"Xcode Localization Catalog" = "Xcode-lokalisatiecatalogus";
+
+/* Spotlight keywords. Translation needs to preservet syntax (commas without spaces). Can be left as-is or, if translating, only the last two items should be translated; the rest are either filetype or proper names or abbreviations used by developers (i18n, l10n). */
+MDItemKeywords = "PO, XLIFF, gettext, WordPress, i18n, l10n, vertaling, lokalisatie";
+
+/* Permissions description for macOS Catalina */
+NSDesktopFolderUsageDescription = "Poedit heeft toegang nodig tot uw bronbestanden om ze voor vertaalbare strings te scannen.";
+
+/* Permissions description for macOS Catalina */
+NSDocumentsFolderUsageDescription = "Poedit heeft toegang nodig tot uw bronbestanden om ze voor vertaalbare strings te scannen.";
+
+/* Permissions description for macOS Catalina */
+NSDownloadsFolderUsageDescription = "Poedit heeft toegang nodig tot uw bronbestanden om ze voor vertaalbare strings te scannen.";
+
+/* Permissions description for macOS Catalina */
+NSFileProviderDomainUsageDescription = "Poedit heeft toegang nodig tot uw bronbestanden om ze voor vertaalbare strings te scannen.";
+
+/* Permissions description for macOS Catalina */
+NSNetworkVolumesUsageDescription = "Poedit heeft toegang nodig tot uw bronbestanden om ze voor vertaalbare strings te scannen.";
+
+/* Permissions description for macOS Catalina */
+NSRemovableVolumesUsageDescription = "Poedit heeft toegang nodig tot uw bronbestanden om ze voor vertaalbare strings te scannen.";

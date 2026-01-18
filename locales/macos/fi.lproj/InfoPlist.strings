@@ -1,0 +1,50 @@
+/* File kind displayed in Finder */
+"PO Translation" = "PO-käännös";
+
+/* File kind displayed in Finder */
+"Compiled Translation" = "Koottu käännös";
+
+/* File kind displayed in Finder */
+"Translation Template" = "Käännöspohja";
+
+/* File kind displayed in Finder */
+"XLIFF Translation" = "XLIFF-käännös";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Qt-käännös";
+
+/* File kind displayed in Finder */
+"Flutter Translation" = "Flutter-käännös";
+
+/* File kind displayed in Finder */
+"RESX Resource" = "RESX-resurssi";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Qt-käännös";
+
+/* File kind displayed in Finder */
+"JSON Document" = "JSON-dokumentti";
+
+/* File kind displayed in Finder */
+"Xcode Localization Catalog" = "Xcode-lokalisointikatalogi";
+
+/* Spotlight keywords. Translation needs to preservet syntax (commas without spaces). Can be left as-is or, if translating, only the last two items should be translated; the rest are either filetype or proper names or abbreviations used by developers (i18n, l10n). */
+MDItemKeywords = "PO,XLIFF,gettext,WordPress,i18n,l10n,käännös,lokalisointi,kotoistus";
+
+/* Permissions description for macOS Catalina */
+NSDesktopFolderUsageDescription = "Poedit tarvitsee pääsyn lähdekooditiedostoihin etsiäkseen niistä käännettäviä tekstejä.";
+
+/* Permissions description for macOS Catalina */
+NSDocumentsFolderUsageDescription = "Poedit tarvitsee pääsyn lähdekooditiedostoihin etsiäkseen niistä käännettäviä tekstejä.";
+
+/* Permissions description for macOS Catalina */
+NSDownloadsFolderUsageDescription = "Poedit tarvitsee pääsyn lähdekooditiedostoihin etsiäkseen niistä käännettäviä tekstejä.";
+
+/* Permissions description for macOS Catalina */
+NSFileProviderDomainUsageDescription = "Poedit tarvitsee pääsyn lähdekooditiedostoihin etsiäkseen niistä käännettäviä tekstejä.";
+
+/* Permissions description for macOS Catalina */
+NSNetworkVolumesUsageDescription = "Poedit tarvitsee pääsyn lähdekooditiedostoihin etsiäkseen niistä käännettäviä tekstejä.";
+
+/* Permissions description for macOS Catalina */
+NSRemovableVolumesUsageDescription = "Poedit tarvitsee pääsyn lähdekooditiedostoihin etsiäkseen niistä käännettäviä tekstejä.";

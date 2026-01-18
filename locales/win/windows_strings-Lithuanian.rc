@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_LITHUANIAN, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO vertimas"
+    223, "Kompiliuotas vertimas"
+    224, "Vertimo šablonas"
+    225, "XLIFF vertimas"
+    226, "JSON dokumentas"
+    227, "Flutter vertimas"
+    228, "RESX šaltinis"
+    229, "Qt vertimas"
+END

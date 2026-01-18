@@ -1,0 +1,8 @@
+
+toolsets = vs2015;
+
+if ( $toolset == vs2015 ) {
+    defines += _CRT_SECURE_NO_WARNINGS;
+}
+
+vs2015.generate-solution = false;

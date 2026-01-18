@@ -1,0 +1,50 @@
+/* File kind displayed in Finder */
+"PO Translation" = "PO-Übersetzung";
+
+/* File kind displayed in Finder */
+"Compiled Translation" = "Kompilierte Übersetzung";
+
+/* File kind displayed in Finder */
+"Translation Template" = "Übersetzungsvorlage";
+
+/* File kind displayed in Finder */
+"XLIFF Translation" = "XLIFF-Übersetzung";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Qt-Übersetzung";
+
+/* File kind displayed in Finder */
+"Flutter Translation" = "Flutter-Übersetzung";
+
+/* File kind displayed in Finder */
+"RESX Resource" = "RESX-Ressource";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Qt-Übersetzung";
+
+/* File kind displayed in Finder */
+"JSON Document" = "JSON-Dokument";
+
+/* File kind displayed in Finder */
+"Xcode Localization Catalog" = "Xcode-Lokalisierungskatalog";
+
+/* Spotlight keywords. Translation needs to preservet syntax (commas without spaces). Can be left as-is or, if translating, only the last two items should be translated; the rest are either filetype or proper names or abbreviations used by developers (i18n, l10n). */
+MDItemKeywords = "PO,XLIFF,gettext,WordPress,i18n,l10n,Übersetzung,Lokalisierung";
+
+/* Permissions description for macOS Catalina */
+NSDesktopFolderUsageDescription = "Poedit muss auf Ihre Quelldateien zugreifen, um sie nach übersetzbaren Zeichenketten zu durchsuchen.";
+
+/* Permissions description for macOS Catalina */
+NSDocumentsFolderUsageDescription = "Poedit muss auf Ihre Quelldateien zugreifen, um sie nach übersetzbaren Zeichenketten zu durchsuchen.";
+
+/* Permissions description for macOS Catalina */
+NSDownloadsFolderUsageDescription = "Poedit muss auf Ihre Quelldateien zugreifen, um sie nach übersetzbaren Zeichenketten zu durchsuchen.";
+
+/* Permissions description for macOS Catalina */
+NSFileProviderDomainUsageDescription = "Poedit muss auf Ihre Quelldateien zugreifen, um sie nach übersetzbaren Zeichenketten zu durchsuchen.";
+
+/* Permissions description for macOS Catalina */
+NSNetworkVolumesUsageDescription = "Poedit muss auf Ihre Quelldateien zugreifen, um sie nach übersetzbaren Zeichenketten zu durchsuchen.";
+
+/* Permissions description for macOS Catalina */
+NSRemovableVolumesUsageDescription = "Poedit muss auf Ihre Quelldateien zugreifen, um sie nach übersetzbaren Zeichenketten zu durchsuchen.";

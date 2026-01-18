@@ -1,0 +1,50 @@
+/* File kind displayed in Finder */
+"PO Translation" = "Файл с превод PO";
+
+/* File kind displayed in Finder */
+"Compiled Translation" = "Компилиран превод";
+
+/* File kind displayed in Finder */
+"Translation Template" = "Шаблон за преводи";
+
+/* File kind displayed in Finder */
+"XLIFF Translation" = "Файл с превод XLIFF";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Превод на Qt";
+
+/* File kind displayed in Finder */
+"Flutter Translation" = "Превод на Flutter";
+
+/* File kind displayed in Finder */
+"RESX Resource" = "Ресурс RESX";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Превод на Qt";
+
+/* File kind displayed in Finder */
+"JSON Document" = "Документ JSON";
+
+/* File kind displayed in Finder */
+"Xcode Localization Catalog" = "Локализационен каталог на Xcode";
+
+/* Spotlight keywords. Translation needs to preservet syntax (commas without spaces). Can be left as-is or, if translating, only the last two items should be translated; the rest are either filetype or proper names or abbreviations used by developers (i18n, l10n). */
+MDItemKeywords = "PO,XLIFF,gettext,WordPress,i18n,l10n,превод,локализация";
+
+/* Permissions description for macOS Catalina */
+NSDesktopFolderUsageDescription = "Poedit трябва да има достъп до файловете с изходния код, за да може да ги сканира за текстове за превод.";
+
+/* Permissions description for macOS Catalina */
+NSDocumentsFolderUsageDescription = "Poedit трябва да има достъп до файловете с изходния код, за да може да ги сканира за текстове за превод.";
+
+/* Permissions description for macOS Catalina */
+NSDownloadsFolderUsageDescription = "Poedit трябва да има достъп до файловете с изходния код, за да може да ги сканира за текстове за превод.";
+
+/* Permissions description for macOS Catalina */
+NSFileProviderDomainUsageDescription = "Poedit трябва да има достъп до файловете с изходния код, за да може да ги сканира за текстове за превод.";
+
+/* Permissions description for macOS Catalina */
+NSNetworkVolumesUsageDescription = "Poedit трябва да има достъп до файловете с изходния код, за да може да ги сканира за текстове за превод.";
+
+/* Permissions description for macOS Catalina */
+NSRemovableVolumesUsageDescription = "Poedit трябва да има достъп до файловете с изходния код, за да може да ги сканира за текстове за превод.";

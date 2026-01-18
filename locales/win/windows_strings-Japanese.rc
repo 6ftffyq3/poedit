@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_JAPANESE, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO 翻訳"
+    223, "コンパイル済みの翻訳"
+    224, "翻訳テンプレート"
+    225, "XLIFF 翻訳"
+    226, "JSON ドキュメント"
+    227, "Flutter 翻訳"
+    228, "RESX リソース"
+    229, "Qt 翻訳"
+END

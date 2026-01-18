@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_HEBREW, SUBLANG_NEUTRAL
+BEGIN
+    222, "תרגום PO"
+    223, "תרגום מהודר"
+    224, "תבנית תרגום"
+    225, "תרגום XLIFF"
+    226, "מסמך JSON"
+    227, "תרגום של Flutter"
+    228, "משאב RESX"
+    229, "תרגום של Qt"
+END

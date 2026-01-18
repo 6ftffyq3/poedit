@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_ICELANDIC, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO þýðing"
+    223, "Vistþýdd þýðingaskrá"
+    224, "Þýðingasniðmát"
+    225, "XLIFF-þýðing"
+    226, "JSON-skjal"
+    227, "Flutter-þýðing"
+    228, "RESX-tilfang"
+    229, "Qt-þýðing"
+END

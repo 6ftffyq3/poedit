@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_BULGARIAN, SUBLANG_NEUTRAL
+BEGIN
+    222, "Файл на PO с превод"
+    223, "Компилиран превод"
+    224, "Шаблон за преводи"
+    225, "Файл с превод XLIFF"
+    226, "Документ JSON"
+    227, "Превод на Flutter"
+    228, "Ресурс RESX"
+    229, "Превод на Qt"
+END

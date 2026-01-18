@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+BEGIN
+    222, "PO Translation"
+    223, "Compiled Translation"
+    224, "Translation Template"
+    225, "XLIFF Translation"
+    226, "JSON Document"
+    227, "Flutter Translation"
+    228, "RESX Resource"
+    229, "Qt Translation"
+END

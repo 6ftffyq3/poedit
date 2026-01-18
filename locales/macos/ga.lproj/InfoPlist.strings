@@ -1,0 +1,50 @@
+/* File kind displayed in Finder */
+"PO Translation" = "Aistriúchán PO";
+
+/* File kind displayed in Finder */
+"Compiled Translation" = "Aistriúchán Tiomsaithe";
+
+/* File kind displayed in Finder */
+"Translation Template" = "Teimpléad Aistriúcháin";
+
+/* File kind displayed in Finder */
+"XLIFF Translation" = "Aistriúchán XLIFF";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Aistriúchán Qt";
+
+/* File kind displayed in Finder */
+"Flutter Translation" = "Aistriúchán Flutter";
+
+/* File kind displayed in Finder */
+"RESX Resource" = "Acmhainn RESX";
+
+/* File kind displayed in Finder */
+"Qt Translation" = "Aistriúchán Qt";
+
+/* File kind displayed in Finder */
+"JSON Document" = "Doiciméad JSON";
+
+/* File kind displayed in Finder */
+"Xcode Localization Catalog" = "Catalóg Logánaithe Xcode";
+
+/* Spotlight keywords. Translation needs to preservet syntax (commas without spaces). Can be left as-is or, if translating, only the last two items should be translated; the rest are either filetype or proper names or abbreviations used by developers (i18n, l10n). */
+MDItemKeywords = "PO,XLIFF,gettext,WordPress,i18n,l10n,aistriúchán,logánú";
+
+/* Permissions description for macOS Catalina */
+NSDesktopFolderUsageDescription = "Caithfidh tú cead a thabhairt do Poedit teaghráin inaistrithe a lorg sna comhaid fhoinseacha.";
+
+/* Permissions description for macOS Catalina */
+NSDocumentsFolderUsageDescription = "Caithfidh tú cead a thabhairt do Poedit teaghráin inaistrithe a lorg sna comhaid fhoinseacha.";
+
+/* Permissions description for macOS Catalina */
+NSDownloadsFolderUsageDescription = "Caithfidh tú cead a thabhairt do Poedit teaghráin inaistrithe a lorg sna comhaid fhoinseacha.";
+
+/* Permissions description for macOS Catalina */
+NSFileProviderDomainUsageDescription = "Caithfidh tú cead a thabhairt do Poedit teaghráin inaistrithe a lorg sna comhaid fhoinseacha.";
+
+/* Permissions description for macOS Catalina */
+NSNetworkVolumesUsageDescription = "Caithfidh tú cead a thabhairt do Poedit teaghráin inaistrithe a lorg sna comhaid fhoinseacha.";
+
+/* Permissions description for macOS Catalina */
+NSRemovableVolumesUsageDescription = "Caithfidh tú cead a thabhairt do Poedit teaghráin inaistrithe a lorg sna comhaid fhoinseacha.";

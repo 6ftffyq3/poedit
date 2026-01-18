@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_FINNISH, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO-käännös"
+    223, "Koottu käännös"
+    224, "Käännöspohja"
+    225, "XLIFF-käännös"
+    226, "JSON-dokumentti"
+    227, "Flutter-käännös"
+    228, "RESX-resurssi"
+    229, "Qt-käännös"
+END

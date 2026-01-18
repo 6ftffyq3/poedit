@@ -1,0 +1,928 @@
+/*
+ *  This file is part of Poedit (https://poedit.net)
+ *
+ *  Copyright (C) 2013-2026 Vaclav Slavik
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a
+ *  copy of this software and associated documentation files (the "Software"),
+ *  to deal in the Software without restriction, including without limitation
+ *  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ *  and/or sell copies of the Software, and to permit persons to whom the
+ *  Software is furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in
+ *  all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ *  DEALINGS IN THE SOFTWARE.
+ *
+ */
+
+#include "transmem.h"
+
+#include "catalog.h"
+#include "errors.h"
+#include "progress.h"
+#include "str_helpers.h"
+#include "utility.h"
+
+#include <wx/stdpaths.h>
+#include <wx/utils.h>
+#include <wx/dir.h>
+#include <wx/filename.h>
+#include <wx/translation.h>
+
+#include <time.h>
+#include <mutex>
+
+#include <boost/algorithm/string/find.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/name_generator.hpp>
+#include <boost/uuid/string_generator.hpp>
+
+#include <Lucene.h>
+#include <LuceneException.h>
+#include <MMapDirectory.h>
+#include <SerialMergeScheduler.h>
+#include <SimpleFSDirectory.h>
+#include <StandardAnalyzer.h>
+#include <IndexWriter.h>
+#include <IndexSearcher.h>
+#include <IndexReader.h>
+#include <Document.h>
+#include <Field.h>
+#include <DateField.h>
+#include <PrefixQuery.h>
+#include <StringUtils.h>
+#include <TermQuery.h>
+#include <BooleanQuery.h>
+#include <PhraseQuery.h>
+#include <Term.h>
+#include <ScoreDoc.h>
+#include <TopDocs.h>
+#include <StringReader.h>
+#include <TokenStream.h>
+#include <TermAttribute.h>
+#include <PositionIncrementAttribute.h>
+
+using namespace Lucene;
+
+namespace
+{
+
+#define CATCH_AND_RETHROW_EXCEPTION                                                                             \
+    catch (LuceneException& e)                                                                                  \
+    {                                                                                                           \
+        switch (e.getType())                                                                                    \
+        {                                                                                                       \
+            case LuceneException::CorruptIndex:                                                                 \
+            case LuceneException::FileNotFound:                                                                 \
+            case LuceneException::NoSuchDirectory:                                                              \
+                BOOST_THROW_EXCEPTION(Exception(wxString::Format(_("Translation memory database is corrupted: %s (%d)."), \
+                                                 e.getError(), (int)e.getType())));                             \
+            default:                                                                                            \
+                BOOST_THROW_EXCEPTION(Exception(wxString::Format(_("Translation memory error: %s (%d)."),       \
+                                                 e.getError(), (int)e.getType())));                             \
+        }                                                                                                       \
+    }                                                                                                           \
+    catch (std::exception& e)                                                                                   \
+    {                                                                                                           \
+        BOOST_THROW_EXCEPTION(Exception(e.what()));                                                             \
+    }
+
+
+// Manages IndexReader and Searcher instances in multi-threaded environment.
+// Curiously, Lucene uses shared_ptr-based refcounting *and* explicit one as
+// well, with a crucial part not well protected.
+//
+// See https://issues.apache.org/jira/browse/LUCENE-3567 for the exact issue
+// encountered by Poedit's use as well. For an explanation of the manager
+// class, see
+// http://blog.mikemccandless.com/2011/09/lucenes-searchermanager-simplifies.html
+// http://blog.mikemccandless.com/2011/11/near-real-time-readers-with-lucenes.html
+class SearcherManager
+{
+public:
+    SearcherManager(IndexWriterPtr writer)
+    {
+        m_reader = writer->getReader();
+        m_searcher = newLucene<IndexSearcher>(m_reader);
+    }
+
+    ~SearcherManager()
+    {
+        m_searcher.reset();
+        m_reader->decRef();
+    }
+
+    // Safe, properly ref-counting (in Lucene way, not just shared_ptr) holder.
+    template<typename T>
+    class SafeRef
+    {
+    public:
+        typedef boost::shared_ptr<T> TPtr;
+
+        SafeRef(SafeRef&& other) : m_mng(other.m_mng) { std::swap(m_ptr, other.m_ptr); }
+        ~SafeRef() { if (m_ptr) m_mng.DecRef(m_ptr); }
+
+        TPtr ptr() { return m_ptr; }
+        T* operator->() const { return m_ptr.get(); }
+
+        SafeRef(const SafeRef&) = delete;
+        SafeRef& operator=(const SafeRef&) = delete;
+
+    private:
+        friend class SearcherManager;
+        explicit SafeRef(SearcherManager& m, TPtr ptr) : m_mng(m), m_ptr(ptr) {}
+
+        SearcherManager& m_mng;
+        boost::shared_ptr<T> m_ptr;
+    };
+
+    SafeRef<IndexReader> Reader()
+    {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        ReloadReaderIfNeeded();
+        m_reader->incRef();
+        return SafeRef<IndexReader>(*this, m_reader);
+    }
+
+    SafeRef<IndexSearcher> Searcher()
+    {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        ReloadReaderIfNeeded();
+        m_searcher->getIndexReader()->incRef();
+        return SafeRef<IndexSearcher>(*this, m_searcher);
+    }
+
+private:
+    void ReloadReaderIfNeeded()
+    {
+        // contract: m_mutex is locked when this function is called
+        if (m_reader->isCurrent())
+            return; // nothing to do
+
+        auto newReader = m_reader->reopen();
+        auto newSearcher = newLucene<IndexSearcher>(newReader);
+
+        m_reader->decRef();
+
+        m_reader = newReader;
+        m_searcher = newSearcher;
+    }
+
+    void DecRef(IndexReaderPtr& r)
+    {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        r->decRef();
+    }
+    void DecRef(IndexSearcherPtr& s)
+    {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        s->getIndexReader()->decRef();
+    }
+
+    IndexReaderPtr   m_reader;
+    IndexSearcherPtr m_searcher;
+    std::mutex       m_mutex;
+};
+
+
+struct SearchArguments
+{
+    QueryPtr srclang, lang;
+    QueryPtr query;
+    std::wstring exactSourceText;
+
+    void set_lang(const Language& srclang_, const Language& lang_)
+    {
+        // TODO: query by srclang too!
+        this->srclang = newLucene<TermQuery>(newLucene<Term>(L"srclang", srclang_.WCode()));
+
+        const Lucene::String fullLang = lang_.WCode();
+        const Lucene::String shortLang = StringUtils::toUnicode(lang_.Lang());
+
+        QueryPtr langPrimary = newLucene<TermQuery>(newLucene<Term>(L"lang", fullLang));
+        QueryPtr langSecondary;
+        if (fullLang == shortLang)
+        {
+            // for e.g. 'cs', search also 'cs_*' (e.g. 'cs_CZ')
+            langSecondary = newLucene<PrefixQuery>(newLucene<Term>(L"lang", shortLang + L"_"));
+        }
+        else
+        {
+            // search short variants of the language too
+            langSecondary = newLucene<TermQuery>(newLucene<Term>(L"lang", shortLang));
+        }
+        langSecondary->setBoost(0.85);
+        auto langQ = newLucene<BooleanQuery>();
+        langQ->add(langPrimary, BooleanClause::SHOULD);
+        langQ->add(langSecondary, BooleanClause::SHOULD);
+
+        this->lang = langQ;
+    }
+};
+
+
+} // anonymous namespace
+
+// ----------------------------------------------------------------
+// TranslationMemoryImpl
+// ----------------------------------------------------------------
+
+class TranslationMemoryImpl
+{
+public:
+#ifdef __WXMSW__
+    typedef SimpleFSDirectory DirectoryType;
+#else
+    typedef MMapDirectory DirectoryType;
+#endif
+
+    TranslationMemoryImpl() { Init(); }
+
+    ~TranslationMemoryImpl()
+    {
+        m_mng.reset();
+        m_writer->close();
+    }
+
+    SuggestionsList Search(const Language& srclang, const Language& lang,
+                           const std::wstring& source);
+
+    void ExportData(TranslationMemory::IOInterface& destination);
+    void ImportData(std::function<void(TranslationMemory::IOInterface&)> source);
+
+    void SearchSubstring(TranslationMemory::IOInterface& destination,
+                        const Language& srclang, const Language& lang, const std::wstring& sourcePhrase);
+
+    std::shared_ptr<TranslationMemory::Writer> GetWriter() { return m_writerAPI; }
+
+    void GetStats(long& numDocs, long& fileSize);
+
+    static std::wstring GetDatabaseDir();
+
+private:
+    void Init();
+
+private:
+    AnalyzerPtr      m_analyzer;
+    IndexWriterPtr   m_writer;
+    std::shared_ptr<SearcherManager> m_mng;
+
+    std::shared_ptr<TranslationMemory::Writer> m_writerAPI;
+};
+
+
+std::wstring TranslationMemoryImpl::GetDatabaseDir()
+{
+    wxString data;
+#if defined(__UNIX__) && !defined(__WXOSX__)
+    if ( !wxGetEnv("XDG_DATA_HOME", &data) )
+        data = wxGetHomeDir() + "/.local/share";
+    data += "/poedit";
+#else
+    data = wxStandardPaths::Get().GetUserDataDir();
+#endif
+
+    // ensure the parent directory exists:
+    wxFileName::Mkdir(data, wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
+
+    data += wxFILE_SEP_PATH;
+    data += "TranslationMemory";
+
+    return data.ToStdWstring();
+}
+
+
+namespace
+{
+
+// Max. number of hits returned from this API
+static const int MAX_RESULTS = 10;
+
+// Max. number of documents Lucene is queried for. This needs to be more than
+// MAX_RESULTS because we perform additional re-scoring, e.g. because Lucene
+// will happily return much longer documents for a short query.
+// It should be OK to have this fairy large, because most queries will return just
+// a few hits regardless.
+static const int LUCENE_QUERY_MAX_DOCS = 500;
+
+// Normalized score that must be met for a suggestion to be shown. This is
+// an empirical guess of what constitutes good matches.
+static const double QUALITY_THRESHOLD = 0.6;
+
+// Maximum allowed difference in phrase length, in #terms.
+static const int MAX_ALLOWED_LENGTH_DIFFERENCE = 3;
+
+
+void AddOrUpdateResult(SuggestionsList& all, Suggestion&& r)
+{
+    // Sometimes multiple hits may have the same translation, but different score
+    // because the source text may differ while the translation doesn't. E.g.
+    //   "Open File" (Mac) -> "Otevřít soubor"
+    //   "Open file" (Win) -> "Otevřít soubor"
+    // So we can't keep the first score, but need to update it if a better match
+    // with the same translation is found during the search.
+    auto found = std::find_if(all.begin(), all.end(),
+                              [&r](const Suggestion& x){ return x.text == r.text; });
+    if (found == all.end())
+    {
+        all.push_back(std::move(r));
+    }
+    else
+    {
+        if (r.score > found->score)
+            *found = r;
+    }
+}
+
+// Return translation (or source) text field.
+//
+// Older versions of Poedit used to store C-like escaped text (e.g. "\n" instead
+// of newline), but starting with 1.8, the "true" form of the text is stored.
+// To preserve compatibility with older data, a version field is stored with
+// TM documents and this function decides whether to decode escapes or not.
+//
+// TODO: remove this a few years down the road.
+std::wstring get_text_field(DocumentPtr doc, const std::wstring& field)
+{
+    auto version = doc->get(L"v");
+    auto value = doc->get(field);
+    if (version.empty()) // pre-1.8 data
+        return UnescapeCString(value);
+    else
+        return value;
+}
+
+
+void postprocess_results(SuggestionsList& results)
+{
+    std::stable_sort(results.begin(), results.end());
+    if (results.size() > MAX_RESULTS)
+        results.resize(MAX_RESULTS);
+}
+
+
+template<typename T>
+void PerformSearchWithBlock(IndexSearcherPtr searcher,
+                            const SearchArguments& sa,
+                            double scoreThreshold,
+                            double scoreScaling,
+                            T callback)
+{
+    auto fullQuery = newLucene<BooleanQuery>();
+    fullQuery->add(sa.srclang, BooleanClause::MUST);
+    fullQuery->add(sa.lang, BooleanClause::MUST);
+    fullQuery->add(sa.query, BooleanClause::MUST);
+
+    auto hits = searcher->search(fullQuery, LUCENE_QUERY_MAX_DOCS);
+
+    for (int i = 0; i < hits->scoreDocs.size(); i++)
+    {
+        const auto& scoreDoc = hits->scoreDocs[i];
+        auto score = scoreDoc->score / hits->maxScore;
+        if (score < scoreThreshold)
+            continue;
+
+        auto doc = searcher->doc(scoreDoc->doc);
+        auto src = get_text_field(doc, L"source");
+        if (src == sa.exactSourceText)
+        {
+            score = 1.0;
+        }
+        else
+        {
+            if (score == 1.0)
+            {
+                score = 0.95; // can't score non-exact thing as 100%:
+
+                // Check against too small queries having perfect hit in a large stored text.
+                // Do this by penalizing too large difference in lengths of the source strings.
+                double len1 = sa.exactSourceText.size();
+                double len2 = src.size();
+                score *= 1.0 - 0.4 * (std::abs(len1 - len2) / std::max(len1, len2));
+            }
+
+            score *= scoreScaling;
+        }
+
+        callback(doc, score);
+    }
+}
+
+void PerformSearch(IndexSearcherPtr searcher,
+                   const SearchArguments& sa,
+                   SuggestionsList& results,
+                   double scoreThreshold,
+                   double scoreScaling)
+{
+    PerformSearchWithBlock
+    (
+        searcher, sa, scoreThreshold, scoreScaling,
+        [&results](DocumentPtr doc, double score)
+        {
+            auto t = get_text_field(doc, L"trans");
+            time_t ts = DateField::stringToTime(doc->get(L"created"));
+            Suggestion r {t, score, int(ts)};
+            r.id = StringUtils::toUTF8(doc->get(L"uuid"));
+            AddOrUpdateResult(results, std::move(r));
+        }
+    );
+
+    postprocess_results(results);
+}
+
+} // anonymous namespace
+
+SuggestionsList TranslationMemoryImpl::Search(const Language& srclang,
+                                              const Language& lang,
+                                              const std::wstring& source)
+{
+    try
+    {
+        SuggestionsList results;
+
+        const Lucene::String sourceField(L"source");
+        auto boolQ = newLucene<BooleanQuery>();
+        auto phraseQ = newLucene<PhraseQuery>();
+
+        auto stream = m_analyzer->tokenStream(sourceField, newLucene<StringReader>(source));
+        int sourceTokensCount = 0;
+        int sourceTokenPosition = -1;
+        while (stream->incrementToken())
+        {
+            sourceTokensCount++;
+            auto word = stream->getAttribute<TermAttribute>()->term();
+            sourceTokenPosition += stream->getAttribute<PositionIncrementAttribute>()->getPositionIncrement();
+            auto term = newLucene<Term>(sourceField, word);
+            boolQ->add(newLucene<TermQuery>(term), BooleanClause::SHOULD);
+            phraseQ->add(term, sourceTokenPosition);
+        }
+
+        SearchArguments sa;
+        sa.set_lang(srclang, lang);
+        sa.exactSourceText = source;
+        sa.query = phraseQ;
+
+        auto searcher = m_mng->Searcher();
+
+        // Try exact phrase first:
+        PerformSearch(searcher.ptr(), sa, results, QUALITY_THRESHOLD, /*scoreScaling=*/1.0);
+        if (!results.empty())
+            return results;
+
+        // Then, if no matches were found, permit being a bit sloppy:
+        phraseQ->setSlop(1);
+        sa.query = phraseQ;
+        PerformSearch(searcher.ptr(), sa, results, QUALITY_THRESHOLD, /*scoreScaling=*/0.9);
+
+        if (!results.empty())
+            return results;
+
+        // As the last resort, try terms search. This will almost certainly
+        // produce low-quality results, but hopefully better than nothing.
+        boolQ->setMinimumNumberShouldMatch(std::max(1, boolQ->getClauses().size() - MAX_ALLOWED_LENGTH_DIFFERENCE));
+        sa.query = boolQ;
+        PerformSearchWithBlock
+        (
+            searcher.ptr(), sa, QUALITY_THRESHOLD, /*scoreScaling=*/0.8,
+            [=,&results](DocumentPtr doc, double score)
+            {
+                auto s = get_text_field(doc, sourceField);
+                auto t = get_text_field(doc, L"trans");
+                auto stream2 = m_analyzer->tokenStream(sourceField, newLucene<StringReader>(s));
+                int tokensCount2 = 0;
+                while (stream2->incrementToken())
+                    tokensCount2++;
+
+                if (std::abs(tokensCount2 - sourceTokensCount) <= MAX_ALLOWED_LENGTH_DIFFERENCE)
+                {
+                    time_t ts = DateField::stringToTime(doc->get(L"created"));
+                    Suggestion r {t, score, int(ts)};
+                    r.id = StringUtils::toUTF8(doc->get(L"uuid"));
+                    AddOrUpdateResult(results, std::move(r));
+                }
+            }
+        );
+
+        postprocess_results(results);
+        return results;
+    }
+    catch (LuceneException&)
+    {
+        return SuggestionsList();
+    }
+}
+
+
+void TranslationMemoryImpl::SearchSubstring(TranslationMemory::IOInterface& destination,
+                                            const Language& srclang, const Language& lang, const std::wstring& sourcePhrase)
+{
+    try
+    {
+        const Lucene::String sourceField(L"source");
+        auto phraseQ = newLucene<PhraseQuery>();
+
+        auto stream = m_analyzer->tokenStream(sourceField, newLucene<StringReader>(sourcePhrase));
+        int sourceTokenPosition = -1;
+        while (stream->incrementToken())
+        {
+            auto word = stream->getAttribute<TermAttribute>()->term();
+            sourceTokenPosition += stream->getAttribute<PositionIncrementAttribute>()->getPositionIncrement();
+            auto term = newLucene<Term>(sourceField, word);
+            phraseQ->add(term, sourceTokenPosition);
+        }
+
+        SearchArguments sa;
+        sa.set_lang(srclang, lang);
+        sa.exactSourceText = sourcePhrase;
+        sa.query = phraseQ;
+
+        auto searcher = m_mng->Searcher();
+
+        PerformSearchWithBlock
+        (
+            searcher.ptr(), sa, /*qualityThreshold=*/0.0, /*scoreScaling=*/1.0,
+            [&](DocumentPtr doc, double /*score*/)
+            {
+                auto sourceText = get_text_field(doc, sourceField);
+                if (boost::algorithm::ifind_first(sourceText, sourcePhrase))
+                {
+                    destination.Insert
+                    (
+                        srclang,
+                        lang,
+                        sourceText,
+                        get_text_field(doc, L"trans"),
+                        DateField::stringToTime(doc->get(L"created"))
+                    );
+                }
+            }
+        );
+    }
+    CATCH_AND_RETHROW_EXCEPTION
+}
+
+
+void TranslationMemoryImpl::ExportData(TranslationMemory::IOInterface& destination)
+{
+    try
+    {
+        auto reader = m_mng->Reader();
+        int32_t numDocs = reader->maxDoc();
+        Progress progress(numDocs);
+
+        for (int32_t i = 0; i < numDocs; i++)
+        {
+            progress.increment();
+            if (reader->isDeleted(i))
+                continue;
+            auto doc = reader->document(i);
+            destination.Insert
+            (
+            	Language::TryParse(doc->get(L"srclang")),
+                Language::TryParse(doc->get(L"lang")),
+                get_text_field(doc, L"source"),
+                get_text_field(doc, L"trans"),
+                DateField::stringToTime(doc->get(L"created"))
+            );
+        }
+    }
+    CATCH_AND_RETHROW_EXCEPTION
+}
+
+
+void TranslationMemoryImpl::ImportData(std::function<void(TranslationMemory::IOInterface&)> source)
+{
+    auto writer = TranslationMemory::Get().GetWriter();
+    source(*writer);
+    writer->Commit();
+}
+
+
+void TranslationMemoryImpl::GetStats(long& numDocs, long& fileSize)
+{
+    try
+    {
+        auto reader = m_mng->Reader();
+        numDocs = reader->numDocs();
+        fileSize = wxDir::GetTotalSize(GetDatabaseDir()).GetValue();
+    }
+    CATCH_AND_RETHROW_EXCEPTION
+}
+
+// ----------------------------------------------------------------
+// TranslationMemoryWriterImpl
+// ----------------------------------------------------------------
+
+class TranslationMemoryWriterImpl : public TranslationMemory::Writer
+{
+public:
+    TranslationMemoryWriterImpl(IndexWriterPtr writer) : m_writer(writer) {}
+
+    ~TranslationMemoryWriterImpl() {}
+
+    void Commit() override
+    {
+        try
+        {
+            m_writer->commit();
+        }
+        CATCH_AND_RETHROW_EXCEPTION
+    }
+
+    void Rollback() override
+    {
+        try
+        {
+            m_writer->rollback();
+        }
+        CATCH_AND_RETHROW_EXCEPTION
+    }
+
+    void Insert(const Language& srclang, const Language& lang,
+                const std::wstring& source, const std::wstring& trans,
+                time_t creationTime) override
+    {
+        if (!lang.IsValid() || !srclang.IsValid() || lang == srclang)
+            return;
+
+        if (creationTime == 0)
+            creationTime = time(NULL);
+
+        // Compute unique ID for the translation:
+
+        static const boost::uuids::uuid s_namespace =
+          boost::uuids::string_generator()("6e3f73c5-333f-4171-9d43-954c372a8a02");
+        boost::uuids::name_generator gen(s_namespace);
+
+        std::wstring itemId(srclang.WCode());
+        itemId += lang.WCode();
+        itemId += source;
+        itemId += trans;
+
+        const std::wstring itemUUID = boost::uuids::to_wstring(gen(itemId));
+
+        try
+        {
+            // Then add a new document:
+            auto doc = newLucene<Document>();
+
+            doc->add(newLucene<Field>(L"uuid", itemUUID,
+                                      Field::STORE_YES, Field::INDEX_NOT_ANALYZED));
+            doc->add(newLucene<Field>(L"v", L"1",
+                                      Field::STORE_YES, Field::INDEX_NO));
+            doc->add(newLucene<Field>(L"created", DateField::timeToString(creationTime),
+                                      Field::STORE_YES, Field::INDEX_NO));
+            doc->add(newLucene<Field>(L"srclang", srclang.WCode(),
+                                      Field::STORE_YES, Field::INDEX_NOT_ANALYZED));
+            doc->add(newLucene<Field>(L"lang", lang.WCode(),
+                                      Field::STORE_YES, Field::INDEX_NOT_ANALYZED));
+            doc->add(newLucene<Field>(L"source", source,
+                                      Field::STORE_YES, Field::INDEX_ANALYZED));
+            doc->add(newLucene<Field>(L"trans", trans,
+                                      Field::STORE_YES, Field::INDEX_NOT_ANALYZED));
+
+            m_writer->updateDocument(newLucene<Term>(L"uuid", itemUUID), doc);
+        }
+        CATCH_AND_RETHROW_EXCEPTION
+    }
+
+    void Insert(const Language& srclang, const Language& lang,
+                const std::wstring& source, const std::wstring& trans) override
+    {
+        Insert(srclang, lang, source, trans, 0);
+    }
+
+    void Insert(const Language& srclang, const Language& lang, const CatalogItemPtr& item) override
+    {
+        if (!lang.IsValid() || !srclang.IsValid())
+            return;
+
+        // ignore translations with errors in them
+        if (item->HasError())
+            return;
+
+        // ignore untranslated, pre-translated and non-revised or unfinished translations
+        if (item->IsFuzzy() || item->IsPreTranslated() || !item->IsTranslated())
+            return;
+
+        // always store at least the singular translation
+        Insert(srclang, lang, str::to_wstring(item->GetString()), str::to_wstring(item->GetTranslation()));
+
+        // for plurals, try to support at least the simpler cases, with nplurals <= 2
+        if (item->HasPlural())
+        {
+            switch (lang.nplurals())
+            {
+                case 1:
+                    // e.g. Chinese, Japanese; store translation for both singular and plural
+                    Insert(srclang, lang, str::to_wstring(item->GetPluralString()), str::to_wstring(item->GetTranslation()));
+                    break;
+                case 2:
+                    // e.g. Germanic or Romanic languages, same 2 forms as English
+                    Insert(srclang, lang, str::to_wstring(item->GetPluralString()), str::to_wstring(item->GetTranslation(1)));
+                    break;
+                default:
+                    // not supported, only singular stored above
+                    break;
+            }
+        }
+    }
+
+    void Insert(const CatalogPtr& cat) override
+    {
+        Progress progress(cat->items().size());
+
+        auto srclang = cat->GetSourceLanguage();
+        auto lang = cat->GetLanguage();
+        if (!lang.IsValid() || !srclang.IsValid())
+            return;
+
+        for (auto& item: cat->items())
+        {
+            // Note that dt.IsModified() is intentionally not checked - we
+            // want to save old entries in the TM too, so that we harvest as
+            // much useful translations as we can.
+            Insert(srclang, lang, item);
+            progress.increment();
+        }
+    }
+
+    void Delete(const std::string& uuid) override
+    {
+        try
+        {
+            m_writer->deleteDocuments(newLucene<Term>(L"uuid", StringUtils::toUnicode(uuid)));
+        }
+        CATCH_AND_RETHROW_EXCEPTION
+    }
+
+    void DeleteAll() override
+    {
+        try
+        {
+            m_writer->deleteAll();
+        }
+        CATCH_AND_RETHROW_EXCEPTION
+    }
+
+private:
+    IndexWriterPtr m_writer;
+};
+
+
+void TranslationMemoryImpl::Init()
+{
+    try
+    {
+        auto dir = newLucene<DirectoryType>(GetDatabaseDir());
+        m_analyzer = newLucene<StandardAnalyzer>(LuceneVersion::LUCENE_CURRENT);
+
+        m_writer = newLucene<IndexWriter>(dir, m_analyzer, IndexWriter::MaxFieldLengthLIMITED);
+        m_writer->setMergeScheduler(newLucene<SerialMergeScheduler>());
+
+        // get the associated realtime reader & searcher:
+        m_mng.reset(new SearcherManager(m_writer));
+
+        m_writerAPI = std::make_shared<TranslationMemoryWriterImpl>(m_writer);
+    }
+    CATCH_AND_RETHROW_EXCEPTION
+}
+
+
+
+// ----------------------------------------------------------------
+// Singleton management
+// ----------------------------------------------------------------
+
+static std::once_flag initializationFlag;
+TranslationMemory *TranslationMemory::ms_instance = nullptr;
+
+TranslationMemory& TranslationMemory::Get()
+{
+    std::call_once(initializationFlag, []() {
+        ms_instance = new TranslationMemory;
+    });
+    return *ms_instance;
+}
+
+void TranslationMemory::CleanUp()
+{
+    if (ms_instance)
+    {
+        delete ms_instance;
+        ms_instance = nullptr;
+    }
+}
+
+TranslationMemory::TranslationMemory() : m_impl(nullptr)
+{
+    try
+    {
+        m_impl = new TranslationMemoryImpl;
+    }
+    catch (...)
+    {
+        m_error = std::current_exception();
+    }
+}
+
+TranslationMemory::~TranslationMemory() { delete m_impl; }
+
+
+// ----------------------------------------------------------------
+// public API
+// ----------------------------------------------------------------
+
+SuggestionsList TranslationMemory::Search(const Language& srclang,
+                                          const Language& lang,
+                                          const std::wstring& source)
+{
+    if (!m_impl)
+        std::rethrow_exception(m_error);
+    return m_impl->Search(srclang, lang, source);
+}
+
+dispatch::future<SuggestionsList> TranslationMemory::SuggestTranslation(const SuggestionQuery&& q)
+{
+    try
+    {
+        return dispatch::make_ready_future(Search(q.srclang, q.lang, q.source));
+    }
+    catch (...)
+    {
+        return dispatch::make_exceptional_future_from_current<SuggestionsList>();
+    }
+}
+
+void TranslationMemory::Delete(const std::string& id)
+{
+    auto tm = TranslationMemory::Get().GetWriter();
+    tm->Delete(id);
+    tm->Commit();
+}
+
+void TranslationMemory::ExportData(IOInterface& destination)
+{
+    if (!m_impl)
+        std::rethrow_exception(m_error);
+    return m_impl->ExportData(destination);
+}
+
+void TranslationMemory::ImportData(std::function<void(IOInterface&)> source)
+{
+    if (!m_impl)
+        std::rethrow_exception(m_error);
+    return m_impl->ImportData(source);
+}
+
+std::shared_ptr<TranslationMemory::Writer> TranslationMemory::GetWriter()
+{
+    if (!m_impl)
+        std::rethrow_exception(m_error);
+    return m_impl->GetWriter();
+}
+
+void TranslationMemory::DeleteAllAndReset()
+{
+    try
+    {
+        auto tm = TranslationMemory::Get().GetWriter();
+        tm->DeleteAll();
+        tm->Commit();
+    }
+    catch (...)
+    {
+        // Lucene database is corrupted, best we can do is delete it completely
+        wxFileName::Rmdir(TranslationMemoryImpl::GetDatabaseDir(), wxPATH_RMDIR_RECURSIVE);
+
+        // recreate implementation object
+        TranslationMemoryImpl *impl = new TranslationMemoryImpl;
+        std::swap(m_impl, impl);
+        delete impl;
+        m_error = nullptr;
+    }
+}
+
+void TranslationMemory::GetStats(long& numDocs, long& fileSize)
+{
+    if (!m_impl)
+        std::rethrow_exception(m_error);
+    m_impl->GetStats(numDocs, fileSize);
+}
+
+void TranslationMemory::SearchSubstring(IOInterface& destination,
+                                        const Language& srclang, const Language& lang, const std::wstring& sourcePhrase)
+{
+    if (!m_impl)
+        std::rethrow_exception(m_error);
+    m_impl->SearchSubstring(destination, srclang, lang, sourcePhrase);
+}

@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_DUTCH, SUBLANG_NEUTRAL
+BEGIN
+    222, "PO-vertaling"
+    223, "Gecompileerde vertaling"
+    224, "Vertalingssjabloon"
+    225, "XLIFF-vertaling"
+    226, "JSON document"
+    227, "Flutter Vertaling"
+    228, "RESX-bron"
+    229, "Qt-vertaling"
+END

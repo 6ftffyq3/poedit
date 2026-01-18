@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_INDONESIAN, SUBLANG_NEUTRAL
+BEGIN
+    222, "Terjemahan PO"
+    223, "Terjemahan Dikompilasi"
+    224, "Templat Terjemahan"
+    225, "Terjemahan XLIFF"
+    226, "Dokumen JSON"
+    227, "Terjemahan Flutter"
+    228, "Sumber Daya RESX"
+    229, "Terjemahan Qt"
+END

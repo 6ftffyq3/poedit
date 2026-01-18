@@ -1,0 +1,13 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_SPANISH, SUBLANG_NEUTRAL
+BEGIN
+    222, "Traducción PO"
+    223, "Traducción compilada"
+    224, "Plantilla de traducción"
+    225, "Traducción XLIFF"
+    226, "Documento JSON"
+    227, "Traducción de Flutter"
+    228, "Recurso RESX"
+    229, "Traducción de Qt"
+END

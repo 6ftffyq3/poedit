@@ -1,0 +1,9 @@
+#pragma code_page(65001)
+STRINGTABLE
+LANGUAGE LANG_SLOVENIAN, SUBLANG_NEUTRAL
+BEGIN
+    222, "Prevod PO"
+    223, "Sestavljen prevod"
+    224, "Predloga prevoda"
+    225, "Prevod XLIFF"
+END

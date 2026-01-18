@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:Poedit.xcodeproj">
+   </FileRef>
+   <Group
+      location = "container:"
+      name = "Workspace Deps">
+      <FileRef
+         location = "group:deps/custom_build/wxWidgets.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:deps/lucene/LucenePlusPlus.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:deps/custom_build/Boost.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:deps/custom_build/cld2.xcodeproj">
+      </FileRef>
+   </Group>
+</Workspace>

@@ -1,0 +1,117 @@
+project_id: 53425
+base_path: .
+preserve_hierarchy: false
+
+files:
+  -
+    source: /locales/poedit.pot
+    translation: /locales/%locale_with_underscore%.po
+    languages_mapping:
+      locale_with_underscore:
+        af: af
+        an: an
+        ar: ar
+        az: az
+        be: be
+        bg: bg
+        bn: bn
+        bs: bs
+        ca: ca
+        ckb: ckb
+        co: co
+        cs: cs
+        da: da
+        de: de
+        el: el
+        et: et
+        eu: eu
+        fa: fa
+        fi: fi
+        fr: fr
+        ga-IE: ga
+        gl: gl
+        he: he
+        hr: hr
+        hu: hu
+        hy-AM: hy
+        id: id
+        is: is
+        it: it
+        ja: ja
+        ka: ka
+        kab: kab
+        kk: kk
+        ko: ko
+        ku: ku
+        lt: lt
+        lv: lv
+        ms: ms
+        nb: nb
+        nl: nl
+        oc: oc
+        pl: pl
+        ro: ro
+        ru: ru
+        sk: sk
+        sl: sl
+        sq: sq
+        sr: sr
+        tg: tg
+        th: th
+        tr: tr
+        ug: ug
+        uk: uk
+        uz: uz
+        vi: vi
+        es-ES: es
+        pa-IN: pa
+        sv-SE: sv
+        zh-CN: zh_CN
+        zh-TW: zh_TW
+  -
+    source: /locales/macos/en.lproj/InfoPlist.strings
+    translation: /locales/macos/%osx_code%/InfoPlist.strings
+    languages_mapping:
+      osx_code:
+        es-ES: es.lproj
+        ga-IE: ga.lproj
+        hy-AM: hy.lproj
+        pa-IN: pa.lproj
+        pt-PT: pt-PT.lproj
+        sv-SE: sv.lproj
+  -
+    source: /locales/win/windows_strings_base.rc
+    translation: /locales/win/windows_strings-%language%.rc
+    languages_mapping:
+      language:
+        az: Azeri
+        en-GB: English_UK
+        nb: Norwegian_Bokmal
+        pt-BR: Portuguese_Brazilian
+        zh-CN: Chinese_Simplified
+        zh-TW: Chinese_Traditional
+        sr: Serbian_Cyrillic
+  -
+    source: /src/macos/nib/en.lproj/MainToolbar.strings
+    translation: /src/macos/nib/%osx_code%/MainToolbar.strings
+    languages_mapping:
+      osx_code:
+        br-FR: br.lproj
+        es-ES: es.lproj
+        ga-IE: ga.lproj
+        hy-AM: hy.lproj
+        pa-IN: pa.lproj
+        pt-PT: pt-PT.lproj
+        sv-SE: sv.lproj
+  -
+    source: /locales/macos/en.lproj/MoveApplication.strings
+    translation: /locales/macos/%osx_code%/MoveApplication.strings
+    languages_mapping:
+      osx_code:
+        es-ES: es.lproj
+        ga-IE: ga.lproj
+        hy-AM: hy.lproj
+        pa-IN: pa.lproj
+        pt-PT: pt-PT.lproj
+        sv-SE: sv.lproj
+
