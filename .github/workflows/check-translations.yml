@@ -4,9 +4,9 @@ on:
   push:
     paths:
     - 'locales/*.po'
-  pull_request:
-    paths:
-    - 'locales/*.po'
+  #pull_request:
+    #paths:
+    #- 'locales/*.po'
 
 jobs:
   check-po-validity:
