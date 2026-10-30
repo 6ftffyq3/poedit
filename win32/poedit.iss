@@ -38,8 +38,48 @@
 #define APP_ID           "{68EB2C37-083A-4303-B5D8-41FA67E50B8F}"
 
 #ifndef CRT_REDIST
-#define CRT_REDIST       GetEnv("VCToolsRedistDir") + "x64\Microsoft.VC143.CRT"
+; CRT_REDIST can still be passed explicitly (/dCRT_REDIST=...). Otherwise find
+; the x64\Microsoft.VC<ver>.CRT folder under VCToolsRedistDir instead of
+; hardcoding the toolset version (VC143, VC145, ...), picking the highest
+; version if there is more than one.
+
+#define VC_REDIST_DIR    GetEnv("VCToolsRedistDir")
+#if VC_REDIST_DIR == ""
+  #error VCToolsRedistDir is not set: run from a VS Developer Command Prompt or pass /dCRT_REDIST=<path>
 #endif
+#if Copy(VC_REDIST_DIR, Len(VC_REDIST_DIR), 1) != "\"
+  #define VC_REDIST_DIR  VC_REDIST_DIR + "\"
+#endif
+
+#define CRT_FIND_HANDLE  0
+#define CRT_FIND_RESULT  0
+#define CRT_VERSION      0
+
+; For each match, "Microsoft.VC145.CRT" -> 145: skip the 12-char "Microsoft.VC"
+; prefix and the 4-char ".CRT" suffix; non-numeric names yield 0 and are ignored.
+#sub CheckCrtCandidate
+  #define CRT_CANDIDATE      FindGetFileName(CRT_FIND_HANDLE)
+  #pragma message "CRT Candidate: " + CRT_CANDIDATE
+  #define CRT_CANDIDATE_VER  Int(Copy(CRT_CANDIDATE, 13, Len(CRT_CANDIDATE) - 16), 0)
+  #pragma message "CRT Parsed version: " + Str(CRT_CANDIDATE_VER)
+  #if CRT_CANDIDATE_VER > CRT_VERSION
+    #expr CRT_VERSION = CRT_CANDIDATE_VER
+  #endif
+#endsub
+
+#for {CRT_FIND_HANDLE = CRT_FIND_RESULT = FindFirst(VC_REDIST_DIR + "x64\Microsoft.VC*.CRT", faDirectory); CRT_FIND_RESULT; CRT_FIND_RESULT = FindNext(CRT_FIND_HANDLE)} CheckCrtCandidate
+#if CRT_FIND_HANDLE
+  #expr FindClose(CRT_FIND_HANDLE)
+#endif
+
+#if CRT_VERSION == 0
+  #error No x64\Microsoft.VC*.CRT folder found under VCToolsRedistDir
+#endif
+
+#define CRT_REDIST       VC_REDIST_DIR + "x64\Microsoft.VC" + Str(CRT_VERSION) + ".CRT"
+#endif
+
+#pragma message "CRT redistributables: " + CRT_REDIST
 
 [Setup]
 OutputBaseFilename=Poedit-{#VERSION}-setup

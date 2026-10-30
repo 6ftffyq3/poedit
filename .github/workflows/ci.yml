@@ -1,8 +1,7 @@
 name: Build
 
 on:
-  #[push, pull_request]
-  workflow_dispatch:
+  push:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,6 +79,13 @@ jobs:
   build-macos:
     name: Build on macOS
     runs-on: macos-15
+    env:
+      XCODE_CONFIGURATION: Release
+      # Empty = the project default. In Release that is a universal binary
+      # (arm64 + x86_64), because only the Debug configurations set
+      # ONLY_ACTIVE_ARCH = YES. Set to e.g. "arm64" for a faster, single-arch
+      # build.
+      MACOS_ARCHS: ''
     steps:
     - name: Setup parallel submodule fetching
       run: git config --global submodule.fetchJobs 10
@@ -99,14 +105,67 @@ jobs:
         # see a7fdeb1b and https://mastodon.social/@siracusa/115491845898322390
         xcode-version: '~26.0.0'
     - name: Build
+      # Plain "build" (not "archive" + "-exportArchive"): exporting an archive
+      # always needs a real Apple signing certificate and team, which CI lacks.
+      # The project's own macos/poedit.xcconfig sets CODE_SIGN_IDENTITY = -
+      # (ad-hoc, "Sign to Run Locally"), which needs no certificate. Do NOT
+      # override CODE_SIGN_IDENTITY on the command line: the GettextTools
+      # target relies on its own empty identity and is signed later by
+      # scripts/macos-sign-bundle.sh.
       run: |
-        xcodebuild -workspace Poedit.xcworkspace -scheme Poedit -destination "platform=macOS,arch=arm64,name=My Mac" -parallelizeTargets -configuration Debug -archivePath Poedit.xcarchive archive
-        xcodebuild -exportArchive -archivePath Poedit.xcarchive -exportPath Poedit.app -exportOptionsPlist macos/export-options.plist
+        arch_args=()
+        if [ -n "$MACOS_ARCHS" ]; then
+          arch_args=(ARCHS="$MACOS_ARCHS" ONLY_ACTIVE_ARCH=NO)
+        fi
+        xcodebuild \
+          -workspace Poedit.xcworkspace \
+          -scheme Poedit \
+          -configuration "$XCODE_CONFIGURATION" \
+          -destination 'generic/platform=macOS' \
+          -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+          -parallelizeTargets \
+          build \
+          "${arch_args[@]}"
+    - name: Package app bundle
+      run: |
+        PRODUCTS="$RUNNER_TEMP/DerivedData/Build/Products/$XCODE_CONFIGURATION"
+        APP="$PRODUCTS/Poedit.app"
+        if [ ! -d "$APP" ]; then
+          echo "::error::Poedit.app not found at $APP"
+          ls -la "$RUNNER_TEMP/DerivedData/Build/Products" || true
+          exit 1
+        fi
+        echo "Architectures in the main executable:"
+        lipo -archs "$APP/Contents/MacOS/Poedit"
+        if [ -n "$MACOS_ARCHS" ]; then
+          SUFFIX=$(echo "$MACOS_ARCHS" | tr ' ' '-')
+        else
+          SUFFIX=universal
+        fi
+        echo "Signature of the built app (ad-hoc, no identity):"
+        codesign --display --verbose=2 "$APP" 2>&1 || true
+        codesign --verify --deep --verbose=2 "$APP" \
+          || echo "::warning::codesign verification of the ad-hoc signature failed"
+        # upload-artifact drops symlinks and the executable bit, which breaks
+        # .app bundles (Sparkle.framework uses symlinks). ditto keeps both.
+        mkdir -p dist dsym
+        ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Poedit-macos-$SUFFIX.zip"
+        # Debug symbols, like the PDBs in the Windows build
+        if [ -d "$APP.dSYM" ]; then
+          ditto -c -k --keepParent "$APP.dSYM" "dsym/Poedit-macos-$SUFFIX-dSYM.zip"
+        fi
     - name: Upload bundle
       uses: actions/upload-artifact@v4
       with:
         name: macos-build
-        path: Poedit.app
+        path: dist/*.zip
+        if-no-files-found: error
+    - name: Upload debug symbols
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-dsym
+        path: dsym/*.zip
+        if-no-files-found: ignore
     - name: Upload entire dir
       uses: actions/upload-artifact@v4
       with:
